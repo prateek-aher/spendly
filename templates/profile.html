@@ -20,7 +20,7 @@
         <div class="profile-stats">
             <div class="mock-stat-tile">
                 <span class="mock-stat-label">Total spent</span>
-                <span class="mock-stat-value">${{ "%.2f"|format(summary.total_spent) }}</span>
+                <span class="mock-stat-value">₹{{ "%.2f"|format(summary.total_spent) }}</span>
             </div>
             <div class="mock-stat-tile">
                 <span class="mock-stat-label">Transactions</span>
@@ -55,7 +55,7 @@
                             <td>
                                 <span class="category-badge category-badge-{{ tx.category|lower }}">{{ tx.category }}</span>
                             </td>
-                            <td class="amount-cell">${{ "%.2f"|format(tx.amount) }}</td>
+                            <td class="amount-cell">₹{{ "%.2f"|format(tx.amount) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -73,7 +73,7 @@
                         <div class="mock-bar-track">
                             <div class="mock-bar bar-{{ cat.name|lower }}" style="width: {{ cat.percent }}%;"></div>
                         </div>
-                        <span class="profile-cat-amount">${{ "%.2f"|format(cat.amount) }}</span>
+                        <span class="profile-cat-amount">₹{{ "%.2f"|format(cat.amount) }}</span>
                     </div>
                     {% endfor %}
                 </div>
