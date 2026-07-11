@@ -904,6 +904,31 @@ a { color: inherit; text-decoration: none; }
 
 .profile-table-wrap { overflow-x: auto; }
 
+#recent-transactions { scroll-margin-top: 80px; }
+
+.pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.pagination-btn {
+    padding: 0.5rem 1.1rem;
+    font-size: 0.85rem;
+}
+
+.pagination-btn.is-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
 .profile-columns {
     display: grid;
     grid-template-columns: 3fr 2fr;

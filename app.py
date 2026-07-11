@@ -16,6 +16,8 @@ from database.queries import (
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
+TRANSACTIONS_PER_PAGE = 10
+
 with app.app_context():
     init_db()
     seed_db()
@@ -152,7 +154,23 @@ def profile():
         "top_category": stats["top_category"],
     }
 
-    transactions = get_recent_transactions(user_id, start_date=start_date, end_date=end_date)
+    try:
+        page = int(request.args.get("page", 1))
+    except ValueError:
+        page = 1
+    page = max(1, page)
+
+    total_pages = max(1, -(-stats["transaction_count"] // TRANSACTIONS_PER_PAGE))
+    page = min(page, total_pages)
+    offset = (page - 1) * TRANSACTIONS_PER_PAGE
+
+    transactions = get_recent_transactions(
+        user_id,
+        limit=TRANSACTIONS_PER_PAGE,
+        start_date=start_date,
+        end_date=end_date,
+        offset=offset,
+    )
     categories = [
         {"name": cat["name"], "amount": cat["amount"], "percent": cat["pct"]}
         for cat in get_category_breakdown(user_id, start_date=start_date, end_date=end_date)
@@ -164,6 +182,15 @@ def profile():
         "end": (end_param or "") if range_value == "custom" else "",
     }
 
+    pagination = {
+        "page": page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "prev_page": page - 1,
+        "next_page": page + 1,
+    }
+
     return render_template(
         "profile.html",
         user=user,
@@ -171,6 +198,7 @@ def profile():
         transactions=transactions,
         categories=categories,
         filter_state=filter_state,
+        pagination=pagination,
     )
 
 

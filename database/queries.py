@@ -111,7 +111,7 @@ def get_summary_stats(user_id, start_date=None, end_date=None):
     }
 
 
-def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
+def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, offset=0):
     conn = get_db()
 
     where_clause = "WHERE user_id = ?"
@@ -119,7 +119,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     if start_date is not None and end_date is not None:
         where_clause += " AND date BETWEEN ? AND ?"
         params += [start_date, end_date]
-    params.append(limit)
+    params += [limit, offset]
 
     rows = conn.execute(
         f"""
@@ -127,7 +127,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
         FROM expenses
         {where_clause}
         ORDER BY date DESC, id DESC
-        LIMIT ?
+        LIMIT ? OFFSET ?
         """,
         params,
     ).fetchall()
