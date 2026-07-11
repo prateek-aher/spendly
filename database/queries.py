@@ -1,10 +1,59 @@
 """Pure DB query helpers for the profile page. No Flask imports."""
 
 from datetime import date, datetime, timedelta
+from math import ceil
 
 from database.db import get_db
 
 VALID_RANGES = {"all", "7d", "30d", "this_month", "last_month", "custom"}
+
+FILTER_PRESETS = [
+    ("all", "All time"),
+    ("7d", "Last 7 days"),
+    ("30d", "Last 30 days"),
+    ("this_month", "This month"),
+    ("last_month", "Last month"),
+    ("custom", "Custom"),
+]
+
+
+def normalize_range(range_value):
+    """Return range_value if it's a recognized preset, else 'all'."""
+    return range_value if range_value in VALID_RANGES else "all"
+
+
+def _user_date_filter(user_id, start_date, end_date):
+    """Return (where_clause, params) filtering by user_id and, if both dates
+    are given, an inclusive date range."""
+    where_clause = "WHERE user_id = ?"
+    params = [user_id]
+    if start_date is not None and end_date is not None:
+        where_clause += " AND date BETWEEN ? AND ?"
+        params += [start_date, end_date]
+    return where_clause, params
+
+
+def paginate(total_count, page_param, per_page):
+    """Resolve a page query param into a pagination state dict, clamped to
+    valid bounds. Never raises."""
+    try:
+        page = int(page_param)
+    except (TypeError, ValueError):
+        page = 1
+    page = max(1, page)
+
+    total_pages = max(1, ceil(total_count / per_page))
+    page = min(page, total_pages)
+
+    return {
+        "page": page,
+        "total_pages": total_pages,
+        "has_prev": page > 1,
+        "has_next": page < total_pages,
+        "prev_page": page - 1,
+        "next_page": page + 1,
+        "offset": (page - 1) * per_page,
+    }
 
 
 def _parse_iso_date(value):
@@ -22,8 +71,9 @@ def resolve_date_range(range_value, start_value=None, end_value=None, today=None
     of 'YYYY-MM-DD' strings, or (None, None) for all-time / any invalid input.
     Never raises."""
     today = today or date.today()
+    range_value = normalize_range(range_value)
 
-    if range_value not in VALID_RANGES or range_value == "all":
+    if range_value == "all":
         return None, None
 
     if range_value == "7d":
@@ -70,12 +120,7 @@ def get_user_by_id(user_id):
 
 def get_summary_stats(user_id, start_date=None, end_date=None):
     conn = get_db()
-
-    where_clause = "WHERE user_id = ?"
-    params = [user_id]
-    if start_date is not None and end_date is not None:
-        where_clause += " AND date BETWEEN ? AND ?"
-        params += [start_date, end_date]
+    where_clause, params = _user_date_filter(user_id, start_date, end_date)
 
     row = conn.execute(
         f"""
@@ -113,12 +158,7 @@ def get_summary_stats(user_id, start_date=None, end_date=None):
 
 def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, offset=0):
     conn = get_db()
-
-    where_clause = "WHERE user_id = ?"
-    params = [user_id]
-    if start_date is not None and end_date is not None:
-        where_clause += " AND date BETWEEN ? AND ?"
-        params += [start_date, end_date]
+    where_clause, params = _user_date_filter(user_id, start_date, end_date)
     params += [limit, offset]
 
     rows = conn.execute(
@@ -149,12 +189,7 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, o
 
 def get_category_breakdown(user_id, start_date=None, end_date=None):
     conn = get_db()
-
-    where_clause = "WHERE user_id = ?"
-    params = [user_id]
-    if start_date is not None and end_date is not None:
-        where_clause += " AND date BETWEEN ? AND ?"
-        params += [start_date, end_date]
+    where_clause, params = _user_date_filter(user_id, start_date, end_date)
 
     rows = conn.execute(
         f"""

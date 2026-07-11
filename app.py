@@ -5,11 +5,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
 from database.queries import (
-    VALID_RANGES,
+    FILTER_PRESETS,
     get_category_breakdown,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
+    normalize_range,
+    paginate,
     resolve_date_range,
 )
 
@@ -140,9 +142,7 @@ def profile():
         "initials": initials,
     }
 
-    range_value = request.args.get("range", "all")
-    if range_value not in VALID_RANGES:
-        range_value = "all"
+    range_value = normalize_range(request.args.get("range", "all"))
     start_param = request.args.get("start")
     end_param = request.args.get("end")
     start_date, end_date = resolve_date_range(range_value, start_param, end_param)
@@ -154,22 +154,14 @@ def profile():
         "top_category": stats["top_category"],
     }
 
-    try:
-        page = int(request.args.get("page", 1))
-    except ValueError:
-        page = 1
-    page = max(1, page)
-
-    total_pages = max(1, -(-stats["transaction_count"] // TRANSACTIONS_PER_PAGE))
-    page = min(page, total_pages)
-    offset = (page - 1) * TRANSACTIONS_PER_PAGE
+    pagination = paginate(stats["transaction_count"], request.args.get("page"), TRANSACTIONS_PER_PAGE)
 
     transactions = get_recent_transactions(
         user_id,
         limit=TRANSACTIONS_PER_PAGE,
         start_date=start_date,
         end_date=end_date,
-        offset=offset,
+        offset=pagination["offset"],
     )
     categories = [
         {"name": cat["name"], "amount": cat["amount"], "percent": cat["pct"]}
@@ -182,14 +174,10 @@ def profile():
         "end": (end_param or "") if range_value == "custom" else "",
     }
 
-    pagination = {
-        "page": page,
-        "total_pages": total_pages,
-        "has_prev": page > 1,
-        "has_next": page < total_pages,
-        "prev_page": page - 1,
-        "next_page": page + 1,
-    }
+    filter_query_args = {"range": range_value}
+    if range_value == "custom":
+        filter_query_args["start"] = filter_state["start"]
+        filter_query_args["end"] = filter_state["end"]
 
     return render_template(
         "profile.html",
@@ -198,6 +186,8 @@ def profile():
         transactions=transactions,
         categories=categories,
         filter_state=filter_state,
+        filter_query_args=filter_query_args,
+        filter_presets=FILTER_PRESETS,
         pagination=pagination,
     )
 
