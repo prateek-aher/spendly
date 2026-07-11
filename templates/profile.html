@@ -20,14 +20,7 @@
         <div class="profile-card profile-filter-card">
             <form method="GET" action="{{ url_for('profile') }}" class="filter-form">
                 <div class="filter-presets">
-                    {% for value, label in [
-                        ("all", "All time"),
-                        ("7d", "Last 7 days"),
-                        ("30d", "Last 30 days"),
-                        ("this_month", "This month"),
-                        ("last_month", "Last month"),
-                        ("custom", "Custom"),
-                    ] %}
+                    {% for value, label in filter_presets %}
                     <button
                         type="submit"
                         name="range"
@@ -116,7 +109,10 @@
             {% if pagination.total_pages > 1 %}
             <div class="pagination">
                 {% if pagination.has_prev %}
-                <a class="btn-ghost pagination-btn" href="{{ url_for('profile', range=filter_state.range, start=filter_state.start, end=filter_state.end, page=pagination.prev_page) }}#recent-transactions">Prev</a>
+                <a
+                    class="btn-ghost pagination-btn"
+                    href="{{ url_for('profile', page=pagination.prev_page, **filter_query_args) }}#recent-transactions"
+                >Prev</a>
                 {% else %}
                 <span class="btn-ghost pagination-btn is-disabled">Prev</span>
                 {% endif %}
@@ -124,7 +120,10 @@
                 <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
 
                 {% if pagination.has_next %}
-                <a class="btn-ghost pagination-btn" href="{{ url_for('profile', range=filter_state.range, start=filter_state.start, end=filter_state.end, page=pagination.next_page) }}#recent-transactions">Next</a>
+                <a
+                    class="btn-ghost pagination-btn"
+                    href="{{ url_for('profile', page=pagination.next_page, **filter_query_args) }}#recent-transactions"
+                >Next</a>
                 {% else %}
                 <span class="btn-ghost pagination-btn is-disabled">Next</span>
                 {% endif %}
