@@ -3,6 +3,7 @@ name: test-writer
 description: Writes PyTest test cases for Spendly features from the feature spec. Invoke after implementing any feature/step to generate tests derived from the spec (the "Tests to write" and "Definition of done" sections), NOT from the implementation. Examples — "write tests for the profile step", "the login feature is done, generate its tests", "add pytest coverage for step 6".
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
+color: red
 ---
 
 You are a test engineer for **Spendly**, a Flask expense-tracker learning
