@@ -15,6 +15,55 @@
         </div>
     </section>
 
+    <section class="profile-filter">
+        <h2 class="profile-section-title">Filter by date</h2>
+        <div class="profile-card profile-filter-card">
+            <form method="GET" action="{{ url_for('profile') }}" class="filter-form">
+                <div class="filter-presets">
+                    {% for value, label in [
+                        ("all", "All time"),
+                        ("7d", "Last 7 days"),
+                        ("30d", "Last 30 days"),
+                        ("this_month", "This month"),
+                        ("last_month", "Last month"),
+                        ("custom", "Custom"),
+                    ] %}
+                    <button
+                        type="submit"
+                        name="range"
+                        value="{{ value }}"
+                        class="filter-pill {{ 'is-active' if filter_state.range == value else '' }}"
+                    >{{ label }}</button>
+                    {% endfor %}
+                </div>
+
+                <div class="filter-custom-range">
+                    <div class="form-group filter-date-group">
+                        <label for="filter-start">Start date</label>
+                        <input
+                            type="date"
+                            id="filter-start"
+                            name="start"
+                            class="form-input"
+                            value="{{ filter_state.start }}"
+                        >
+                    </div>
+                    <div class="form-group filter-date-group">
+                        <label for="filter-end">End date</label>
+                        <input
+                            type="date"
+                            id="filter-end"
+                            name="end"
+                            class="form-input"
+                            value="{{ filter_state.end }}"
+                        >
+                    </div>
+                    <button type="submit" name="range" value="custom" class="btn-primary filter-apply-btn">Apply</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
     <section>
         <h2 class="profile-section-title">Overview</h2>
         <div class="profile-stats">
