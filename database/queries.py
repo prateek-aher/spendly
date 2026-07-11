@@ -1,8 +1,53 @@
 """Pure DB query helpers for the profile page. No Flask imports."""
 
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 from database.db import get_db
+
+VALID_RANGES = {"all", "7d", "30d", "this_month", "last_month", "custom"}
+
+
+def _parse_iso_date(value):
+    """Return a date object if value is a real 'YYYY-MM-DD' date, else None."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def resolve_date_range(range_value, start_value=None, end_value=None, today=None):
+    """Resolve filter query params into a concrete (start_date, end_date) pair
+    of 'YYYY-MM-DD' strings, or (None, None) for all-time / any invalid input.
+    Never raises."""
+    today = today or date.today()
+
+    if range_value not in VALID_RANGES or range_value == "all":
+        return None, None
+
+    if range_value == "7d":
+        start = today - timedelta(days=6)
+        return start.isoformat(), today.isoformat()
+
+    if range_value == "30d":
+        start = today - timedelta(days=29)
+        return start.isoformat(), today.isoformat()
+
+    if range_value == "this_month":
+        start = today.replace(day=1)
+        return start.isoformat(), today.isoformat()
+
+    if range_value == "last_month":
+        last_day_prev_month = today.replace(day=1) - timedelta(days=1)
+        first_day_prev_month = last_day_prev_month.replace(day=1)
+        return first_day_prev_month.isoformat(), last_day_prev_month.isoformat()
+
+    start = _parse_iso_date(start_value)
+    end = _parse_iso_date(end_value)
+    if start is None or end is None or start > end:
+        return None, None
+    return start.isoformat(), end.isoformat()
 
 
 def get_user_by_id(user_id):
@@ -23,28 +68,35 @@ def get_user_by_id(user_id):
     }
 
 
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, start_date=None, end_date=None):
     conn = get_db()
+
+    where_clause = "WHERE user_id = ?"
+    params = [user_id]
+    if start_date is not None and end_date is not None:
+        where_clause += " AND date BETWEEN ? AND ?"
+        params += [start_date, end_date]
+
     row = conn.execute(
-        """
+        f"""
         SELECT COALESCE(SUM(amount), 0) AS total_spent,
                COUNT(*) AS transaction_count
         FROM expenses
-        WHERE user_id = ?
+        {where_clause}
         """,
-        (user_id,),
+        params,
     ).fetchone()
 
     top_category_row = conn.execute(
-        """
+        f"""
         SELECT category
         FROM expenses
-        WHERE user_id = ?
+        {where_clause}
         GROUP BY category
         ORDER BY SUM(amount) DESC
         LIMIT 1
         """,
-        (user_id,),
+        params,
     ).fetchone()
 
     conn.close()
@@ -59,17 +111,25 @@ def get_summary_stats(user_id):
     }
 
 
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None):
     conn = get_db()
+
+    where_clause = "WHERE user_id = ?"
+    params = [user_id]
+    if start_date is not None and end_date is not None:
+        where_clause += " AND date BETWEEN ? AND ?"
+        params += [start_date, end_date]
+    params.append(limit)
+
     rows = conn.execute(
-        """
+        f"""
         SELECT date, description, category, amount
         FROM expenses
-        WHERE user_id = ?
+        {where_clause}
         ORDER BY date DESC, id DESC
         LIMIT ?
         """,
-        (user_id, limit),
+        params,
     ).fetchall()
     conn.close()
 
@@ -87,17 +147,24 @@ def get_recent_transactions(user_id, limit=10):
     return transactions
 
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, start_date=None, end_date=None):
     conn = get_db()
+
+    where_clause = "WHERE user_id = ?"
+    params = [user_id]
+    if start_date is not None and end_date is not None:
+        where_clause += " AND date BETWEEN ? AND ?"
+        params += [start_date, end_date]
+
     rows = conn.execute(
-        """
+        f"""
         SELECT category, SUM(amount) AS total
         FROM expenses
-        WHERE user_id = ?
+        {where_clause}
         GROUP BY category
         ORDER BY total DESC
         """,
-        (user_id,),
+        params,
     ).fetchall()
 
     if not rows:

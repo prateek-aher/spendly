@@ -5,10 +5,12 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.db import get_db, init_db, seed_db
 from database.queries import (
+    VALID_RANGES,
     get_category_breakdown,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
+    resolve_date_range,
 )
 
 app = Flask(__name__)
@@ -136,18 +138,31 @@ def profile():
         "initials": initials,
     }
 
-    stats = get_summary_stats(user_id)
+    range_value = request.args.get("range", "all")
+    if range_value not in VALID_RANGES:
+        range_value = "all"
+    start_param = request.args.get("start")
+    end_param = request.args.get("end")
+    start_date, end_date = resolve_date_range(range_value, start_param, end_param)
+
+    stats = get_summary_stats(user_id, start_date, end_date)
     summary = {
         "total_spent": stats["total_spent"],
         "expense_count": stats["transaction_count"],
         "top_category": stats["top_category"],
     }
 
-    transactions = get_recent_transactions(user_id)
+    transactions = get_recent_transactions(user_id, start_date=start_date, end_date=end_date)
     categories = [
         {"name": cat["name"], "amount": cat["amount"], "percent": cat["pct"]}
-        for cat in get_category_breakdown(user_id)
+        for cat in get_category_breakdown(user_id, start_date=start_date, end_date=end_date)
     ]
+
+    filter_state = {
+        "range": range_value,
+        "start": (start_param or "") if range_value == "custom" else "",
+        "end": (end_param or "") if range_value == "custom" else "",
+    }
 
     return render_template(
         "profile.html",
@@ -155,6 +170,7 @@ def profile():
         summary=summary,
         transactions=transactions,
         categories=categories,
+        filter_state=filter_state,
     )
 
 
