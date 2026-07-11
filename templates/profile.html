@@ -37,6 +37,7 @@
                     {% endfor %}
                 </div>
 
+                {% if filter_state.range == 'custom' %}
                 <div class="filter-custom-range">
                     <div class="form-group filter-date-group">
                         <label for="filter-start">Start date</label>
@@ -60,6 +61,7 @@
                     </div>
                     <button type="submit" name="range" value="custom" class="btn-primary filter-apply-btn">Apply</button>
                 </div>
+                {% endif %}
             </form>
         </div>
     </section>
@@ -84,7 +86,7 @@
 
     <div class="profile-columns">
 
-        <section class="profile-col-transactions">
+        <section class="profile-col-transactions" id="recent-transactions">
             <h2 class="profile-section-title">Recent transactions</h2>
             <div class="profile-card profile-table-wrap">
                 <table class="profile-table">
@@ -110,6 +112,24 @@
                     </tbody>
                 </table>
             </div>
+
+            {% if pagination.total_pages > 1 %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a class="btn-ghost pagination-btn" href="{{ url_for('profile', range=filter_state.range, start=filter_state.start, end=filter_state.end, page=pagination.prev_page) }}#recent-transactions">Prev</a>
+                {% else %}
+                <span class="btn-ghost pagination-btn is-disabled">Prev</span>
+                {% endif %}
+
+                <span class="pagination-info">Page {{ pagination.page }} of {{ pagination.total_pages }}</span>
+
+                {% if pagination.has_next %}
+                <a class="btn-ghost pagination-btn" href="{{ url_for('profile', range=filter_state.range, start=filter_state.start, end=filter_state.end, page=pagination.next_page) }}#recent-transactions">Next</a>
+                {% else %}
+                <span class="btn-ghost pagination-btn is-disabled">Next</span>
+                {% endif %}
+            </div>
+            {% endif %}
         </section>
 
         <section class="profile-col-categories">
