@@ -1,9 +1,10 @@
 import os
+from datetime import date, datetime
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database.db import get_db, init_db, seed_db
+from database.db import CATEGORIES, get_db, init_db, seed_db
 from database.queries import (
     FILTER_PRESETS,
     get_category_breakdown,
@@ -200,9 +201,92 @@ def analytics():
     return render_template("analytics.html")
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    today = date.today().isoformat()
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount", "")
+        category = request.form.get("category", "")
+        date_raw = request.form.get("date", "")
+        description = request.form.get("description", "").strip()
+        add_another = bool(request.form.get("add_another"))
+
+        error = None
+        error_field = None
+        amount = None
+        try:
+            amount = round(float(amount_raw), 2)
+            if amount <= 0:
+                error = "Amount must be greater than zero."
+                error_field = "amount"
+        except ValueError:
+            error = "Please enter a valid amount."
+            error_field = "amount"
+
+        if not error and category not in CATEGORIES:
+            error = "Please choose a valid category."
+            error_field = "category"
+
+        if not error and len(description) > 200:
+            error = "Description must be 200 characters or fewer."
+            error_field = "description"
+
+        expense_date = None
+        if not error:
+            try:
+                expense_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
+                if expense_date > date.today():
+                    error = "Expense date cannot be in the future."
+                    error_field = "date"
+            except ValueError:
+                error = "Please enter a valid date."
+                error_field = "date"
+
+        if error:
+            return render_template(
+                "expenses_add.html",
+                categories=CATEGORIES,
+                error=error,
+                error_field=error_field,
+                form_values={
+                    "amount": amount_raw,
+                    "category": category,
+                    "date": date_raw or today,
+                    "description": description,
+                    "add_another": add_another,
+                },
+            )
+
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (session["user_id"], amount, category, expense_date.isoformat(), description or None),
+        )
+        conn.commit()
+        conn.close()
+
+        flash(f"Added ₹{amount:.2f} to {category}.", "success")
+        if add_another:
+            return redirect(url_for("add_expense", keep_add_another=1))
+        return redirect(url_for("profile"))
+
+    keep_add_another = bool(request.args.get("keep_add_another"))
+    return render_template(
+        "expenses_add.html",
+        categories=CATEGORIES,
+        form_values={
+            "amount": "",
+            "category": "",
+            "date": today,
+            "description": "",
+            "add_another": keep_add_another,
+        },
+    )
 
 
 @app.route("/expenses/<int:id>/edit")

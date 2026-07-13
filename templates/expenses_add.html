@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Add expense — Spendly{% endblock %}
+
+{% block content %}
+
+<section class="auth-section">
+    <div class="auth-container">
+
+        <div class="auth-header">
+            <h1 class="auth-title">Add an expense</h1>
+            <p class="auth-subtitle">Log a new transaction to your account</p>
+        </div>
+
+        <div class="auth-card">
+            {% if error %}
+            <div class="auth-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('add_expense') }}"
+                  id="expense-form"
+                  data-error-field="{{ error_field or '' }}">
+                <div class="form-group">
+                    <label for="amount">Amount</label>
+                    <div class="input-prefix-group">
+                        <span class="input-prefix">₹</span>
+                        <input type="number" id="amount" name="amount"
+                               class="form-input input-with-prefix" step="0.01" min="0.01"
+                               value="{{ form_values.amount }}" placeholder="0.00"
+                               required autofocus>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <div class="category-picker">
+                        {% for c in categories %}
+                        <input type="radio" name="category" id="cat-{{ c|lower }}"
+                               value="{{ c }}" class="category-radio"
+                               {{ 'checked' if c == form_values.category else '' }} required>
+                        <label for="cat-{{ c|lower }}"
+                               class="category-badge category-badge-{{ c|lower }} category-pill">{{ c }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <div class="date-quick-picks">
+                        <button type="button" class="filter-pill date-quick-pick" data-days-ago="0">Today</button>
+                        <button type="button" class="filter-pill date-quick-pick" data-days-ago="1">Yesterday</button>
+                    </div>
+                    <input type="date" id="date" name="date"
+                           class="form-input" value="{{ form_values.date }}"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <input type="text" id="description" name="description"
+                           class="form-input" placeholder="Optional" maxlength="200"
+                           value="{{ form_values.description }}">
+                </div>
+                <div class="form-group form-checkbox-group">
+                    <label class="checkbox-label" for="add_another">
+                        <input type="checkbox" name="add_another" id="add_another"
+                               {{ 'checked' if form_values.add_another else '' }}>
+                        Add another expense after this one
+                    </label>
+                </div>
+                <button type="submit" class="btn-submit">Add expense</button>
+            </form>
+        </div>
+
+        <p class="auth-switch">
+            <a href="{{ url_for('profile') }}">Cancel</a>
+        </p>
+
+    </div>
+</section>
+
+{% endblock %}
