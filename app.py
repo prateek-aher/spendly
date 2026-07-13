@@ -1,5 +1,7 @@
+import math
 import os
-from datetime import date, datetime
+import sqlite3
+from datetime import date
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -13,6 +15,7 @@ from database.queries import (
     get_user_by_id,
     normalize_range,
     paginate,
+    parse_iso_date,
     resolve_date_range,
 )
 
@@ -206,6 +209,11 @@ def add_expense():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
+    user_id = session["user_id"]
+    if get_user_by_id(user_id) is None:
+        session.pop("user_id", None)
+        return redirect(url_for("login"))
+
     today = date.today().isoformat()
 
     if request.method == "POST":
@@ -218,9 +226,12 @@ def add_expense():
         error = None
         error_field = None
         amount = None
+        # Amount/category/date/description validation below is specific to
+        # add_expense for now. edit_expense (Step 8) will need the same
+        # checks — extract a shared helper once that route exists.
         try:
             amount = round(float(amount_raw), 2)
-            if amount <= 0:
+            if not math.isfinite(amount) or amount <= 0:
                 error = "Amount must be greater than zero."
                 error_field = "amount"
         except ValueError:
@@ -237,13 +248,12 @@ def add_expense():
 
         expense_date = None
         if not error:
-            try:
-                expense_date = datetime.strptime(date_raw, "%Y-%m-%d").date()
-                if expense_date > date.today():
-                    error = "Expense date cannot be in the future."
-                    error_field = "date"
-            except ValueError:
+            expense_date = parse_iso_date(date_raw)
+            if expense_date is None:
                 error = "Please enter a valid date."
+                error_field = "date"
+            elif expense_date > date.today():
+                error = "Expense date cannot be in the future."
                 error_field = "date"
 
         if error:
@@ -262,20 +272,37 @@ def add_expense():
             )
 
         conn = get_db()
-        conn.execute(
-            "INSERT INTO expenses (user_id, amount, category, date, description) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (session["user_id"], amount, category, expense_date.isoformat(), description or None),
-        )
-        conn.commit()
+        try:
+            conn.execute(
+                "INSERT INTO expenses (user_id, amount, category, date, description) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (user_id, amount, category, expense_date.isoformat(), description or None),
+            )
+            conn.commit()
+        except sqlite3.Error:
+            conn.close()
+            return render_template(
+                "expenses_add.html",
+                categories=CATEGORIES,
+                error="Something went wrong saving your expense. Please try again.",
+                error_field=None,
+                form_values={
+                    "amount": amount_raw,
+                    "category": category,
+                    "date": date_raw or today,
+                    "description": description,
+                    "add_another": add_another,
+                },
+            )
         conn.close()
 
         flash(f"Added ₹{amount:.2f} to {category}.", "success")
         if add_another:
-            return redirect(url_for("add_expense", keep_add_another=1))
+            session["keep_add_another"] = True
+            return redirect(url_for("add_expense"))
         return redirect(url_for("profile"))
 
-    keep_add_another = bool(request.args.get("keep_add_another"))
+    keep_add_another = session.pop("keep_add_another", False)
     return render_template(
         "expenses_add.html",
         categories=CATEGORIES,
