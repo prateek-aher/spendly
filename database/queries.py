@@ -112,6 +112,7 @@ def get_user_by_id(user_id):
 
     created = datetime.strptime(row["created_at"][:10], "%Y-%m-%d")
     return {
+        "id": user_id,
         "name": row["name"],
         "email": row["email"],
         "member_since": created.strftime("%B %Y"),
