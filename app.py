@@ -116,7 +116,21 @@ def login():
 def logout():
     session.pop("user_id", None)
     session.pop("user_name", None)
+    session.pop("keep_add_another", None)
     return redirect(url_for("landing"))
+
+
+def require_active_user():
+    """Return the current session's user record if it's still valid, else
+    clear the stale session and return None."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    user_record = get_user_by_id(user_id)
+    if user_record is None:
+        session.pop("user_id", None)
+        return None
+    return user_record
 
 
 # ------------------------------------------------------------------ #
@@ -126,15 +140,10 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-
-    user_id = session["user_id"]
-
-    user_record = get_user_by_id(user_id)
+    user_record = require_active_user()
     if user_record is None:
-        session.pop("user_id", None)
         return redirect(url_for("login"))
+    user_id = user_record["id"]
 
     name_parts = user_record["name"].split()
     initials = "".join(part[0].upper() for part in name_parts[:2])
@@ -198,7 +207,7 @@ def profile():
 
 @app.route("/analytics")
 def analytics():
-    if not session.get("user_id"):
+    if require_active_user() is None:
         return redirect(url_for("login"))
 
     return render_template("analytics.html")
@@ -206,15 +215,13 @@ def analytics():
 
 @app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    if not session.get("user_id"):
+    user_record = require_active_user()
+    if user_record is None:
         return redirect(url_for("login"))
+    user_id = user_record["id"]
 
-    user_id = session["user_id"]
-    if get_user_by_id(user_id) is None:
-        session.pop("user_id", None)
-        return redirect(url_for("login"))
-
-    today = date.today().isoformat()
+    today_date = date.today()
+    today = today_date.isoformat()
 
     if request.method == "POST":
         amount_raw = request.form.get("amount", "")
@@ -222,6 +229,14 @@ def add_expense():
         date_raw = request.form.get("date", "")
         description = request.form.get("description", "").strip()
         add_another = bool(request.form.get("add_another"))
+
+        form_values = {
+            "amount": amount_raw,
+            "category": category,
+            "date": date_raw or today,
+            "description": description,
+            "add_another": add_another,
+        }
 
         error = None
         error_field = None
@@ -231,7 +246,10 @@ def add_expense():
         # checks — extract a shared helper once that route exists.
         try:
             amount = round(float(amount_raw), 2)
-            if not math.isfinite(amount) or amount <= 0:
+            if not math.isfinite(amount):
+                error = "Please enter a valid amount."
+                error_field = "amount"
+            elif amount <= 0:
                 error = "Amount must be greater than zero."
                 error_field = "amount"
         except ValueError:
@@ -252,7 +270,7 @@ def add_expense():
             if expense_date is None:
                 error = "Please enter a valid date."
                 error_field = "date"
-            elif expense_date > date.today():
+            elif expense_date > today_date:
                 error = "Expense date cannot be in the future."
                 error_field = "date"
 
@@ -262,13 +280,7 @@ def add_expense():
                 categories=CATEGORIES,
                 error=error,
                 error_field=error_field,
-                form_values={
-                    "amount": amount_raw,
-                    "category": category,
-                    "date": date_raw or today,
-                    "description": description,
-                    "add_another": add_another,
-                },
+                form_values=form_values,
             )
 
         conn = get_db()
@@ -281,18 +293,13 @@ def add_expense():
             conn.commit()
         except sqlite3.Error:
             conn.close()
+            app.logger.exception("Failed to insert expense for user_id=%s", user_id)
             return render_template(
                 "expenses_add.html",
                 categories=CATEGORIES,
                 error="Something went wrong saving your expense. Please try again.",
                 error_field=None,
-                form_values={
-                    "amount": amount_raw,
-                    "category": category,
-                    "date": date_raw or today,
-                    "description": description,
-                    "add_another": add_another,
-                },
+                form_values=form_values,
             )
         conn.close()
 
@@ -300,6 +307,7 @@ def add_expense():
         if add_another:
             session["keep_add_another"] = True
             return redirect(url_for("add_expense"))
+        session.pop("keep_add_another", None)
         return redirect(url_for("profile"))
 
     keep_add_another = session.pop("keep_add_another", False)
