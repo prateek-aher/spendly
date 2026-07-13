@@ -111,6 +111,7 @@ a { color: inherit; text-decoration: none; }
 
 .nav-links a { color: var(--ink-muted); transition: color 0.2s; }
 .nav-links a:hover { color: var(--ink); }
+.nav-links a.nav-active { color: var(--accent); font-weight: 600; }
 
 .nav-greeting { color: var(--ink-faint); }
 
@@ -992,10 +993,107 @@ a { color: inherit; text-decoration: none; }
     .profile-columns { grid-template-columns: 1fr; }
 }
 
+/* ------------------------------------------------------------------ */
+/* Coming soon / analytics placeholder                                 */
+/* ------------------------------------------------------------------ */
+
+.coming-soon-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4rem 1.5rem;
+}
+
+.coming-soon-card {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 32px rgba(0,0,0,0.07);
+    max-width: 480px;
+    width: 100%;
+    padding: 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1.75rem;
+}
+
+.coming-soon-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: var(--radius-lg);
+    background: var(--accent);
+    color: var(--paper-card);
+    font-size: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.coming-soon-badge {
+    display: inline-flex;
+    align-items: center;
+    background: var(--accent);
+    color: var(--paper-card);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.5rem 1.25rem;
+    border-radius: 999px;
+}
+
+.coming-soon-title {
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    color: var(--ink);
+}
+
+.coming-soon-body {
+    font-size: 1rem;
+    color: var(--ink-muted);
+    line-height: 1.7;
+    max-width: 22rem;
+}
+
+.coming-soon-dots {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.coming-soon-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    animation: coming-soon-pulse 1.2s ease-in-out infinite;
+}
+
+.coming-soon-dot:nth-child(1) { animation-delay: 0s; }
+.coming-soon-dot:nth-child(2) { animation-delay: 0.2s; }
+.coming-soon-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes coming-soon-pulse {
+    0%, 100% { background: var(--border); }
+    30% { background: var(--accent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .coming-soon-dot { animation: none; }
+    .coming-soon-dot:nth-child(1) { background: var(--accent); }
+}
+
+.coming-soon-caption {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+}
+
 @media (max-width: 640px) {
     .profile-stats { grid-template-columns: 1fr; }
     .profile-header { flex-direction: column; text-align: center; }
     .profile-cat-row { grid-template-columns: 90px 1fr 60px; gap: 0.6rem; }
     .filter-custom-range { flex-direction: column; align-items: stretch; }
     .filter-date-group { min-width: 0; }
+    .coming-soon-card { padding: 2.5rem 1.75rem; }
 }
