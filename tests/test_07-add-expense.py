@@ -387,16 +387,18 @@ def test_post_blank_description_does_not_render_literal_none_string(client):
 # ---------------------------------------------------------------------- #
 
 
-def test_post_with_add_another_checked_redirects_back_to_form_with_keep_param(client):
+def test_post_with_add_another_checked_redirects_back_to_form(client):
     uid = _make_user()
     _login(client, uid, "Test User")
 
     resp = client.post("/expenses/add", data=_valid_form(add_another="on"))
 
     assert resp.status_code == 302
-    assert resp.headers["Location"] == "/expenses/add?keep_add_another=1"
+    assert resp.headers["Location"] == "/expenses/add"
     # The expense should still have been saved before the multi-entry redirect.
     assert len(_expenses_for_user(uid)) == 1
+    with client.session_transaction() as sess:
+        assert sess.get("keep_add_another") is True
 
 
 def test_post_without_add_another_redirects_to_profile(client):
@@ -412,14 +414,18 @@ def test_post_without_add_another_redirects_to_profile(client):
 def test_get_add_expense_with_keep_add_another_shows_checkbox_checked(client):
     uid = _make_user()
     _login(client, uid, "Test User")
+    with client.session_transaction() as sess:
+        sess["keep_add_another"] = True
 
-    resp = client.get("/expenses/add?keep_add_another=1")
+    resp = client.get("/expenses/add")
     body = resp.get_data(as_text=True)
 
     assert resp.status_code == 200
     checkbox_tag = _input_tag("add_another", body)
     assert checkbox_tag is not None, "Expected an 'add_another' checkbox on the form"
-    assert "checked" in checkbox_tag, "Checkbox should start pre-checked when keep_add_another=1"
+    assert "checked" in checkbox_tag, "Checkbox should start pre-checked when keep_add_another session flag is set"
+    with client.session_transaction() as sess:
+        assert "keep_add_another" not in sess, "The session flag should be popped after being read once"
 
 
 def test_get_add_expense_without_keep_add_another_checkbox_not_checked(client):

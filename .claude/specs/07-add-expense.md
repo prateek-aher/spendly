@@ -20,18 +20,22 @@ on the form for consecutive entries.
 
 ## Routes
 - `GET /expenses/add` — render the add-expense form — logged-in
-  - Accepts an optional `keep_add_another` query param (`1` when present);
-    when set, the "Add another expense" checkbox on the rendered form
-    starts checked.
+  - If `session["keep_add_another"]` is set (popped on read), the "Add
+    another expense" checkbox on the rendered form starts checked.
 - `POST /expenses/add` — validate and insert the new expense — logged-in
   - Redirects to `/profile` on success, unless the submitted form included
-    a checked `add_another` checkbox, in which case it redirects back to
-    `GET /expenses/add?keep_add_another=1` instead (fast multi-entry loop).
+    a checked `add_another` checkbox, in which case it sets
+    `session["keep_add_another"] = True` and redirects back to
+    `GET /expenses/add` instead (fast multi-entry loop). The "sticky
+    checkbox" state is carried via the session rather than a URL query
+    param, so there's a single source of truth for it.
 
 Both replace the current `@app.route("/expenses/add")` stub in `app.py`,
 which must gain `methods=["GET", "POST"]` and the same
 `if not session.get("user_id"): return redirect(url_for("login"))` guard
-used by `profile()` and `analytics()`.
+used by `profile()` and `analytics()`, plus the same
+`get_user_by_id(...)`-backed stale-session check `profile()` uses (in case
+the session's user was deleted after login).
 
 ## Database changes
 No database changes. The existing `expenses` table
@@ -103,23 +107,36 @@ No new dependencies.
 - Use CSS variables — never hardcode hex values
 - All templates extend `base.html`
 - Currency must always display as ₹ — never £ or $
-- `amount` must be validated server-side as a positive number (reject `0`,
-  negative, non-numeric input) before insert, and normalized to 2 decimal
-  places (`round(amount, 2)`) before the positivity check and the insert,
-  to avoid float artifacts like `19.999999999998`
+- `amount` must be validated server-side as a positive, finite number
+  (reject `0`, negative, non-numeric, `NaN`, and `Infinity` input) before
+  insert, and normalized to 2 decimal places (`round(amount, 2)`) before
+  the positivity/finiteness check and the insert, to avoid float artifacts
+  like `19.999999999998`
 - `category` must be validated against the `CATEGORIES` list in
   `database/db.py` — reject anything else
-- `date` must be validated as a real `YYYY-MM-DD` date before insert (same
-  parsing approach as `_parse_iso_date` in `database/queries.py`); do not
-  allow future-dated expenses
+- `date` must be validated as a real `YYYY-MM-DD` date before insert
+  (reuse `parse_iso_date` from `database/queries.py`, shared with the
+  profile date filter); do not allow future-dated expenses. The
+  future-date check compares against the server's local clock — this
+  assumes the server and client share a timezone, which holds for this
+  app's local single-machine dev deployment but would need revisiting for
+  a multi-timezone production deployment
 - `description` is optional — store `NULL`/empty, never crash if omitted;
   capped at 200 characters, enforced both via `maxlength` on the input and
   a server-side length check (client-side `maxlength` alone is not
   trustworthy since it can be bypassed by posting directly)
-- Validation failures must re-render the form with a clear `error` message,
-  not raise a 500
+- Validation failures must re-render the form with a clear `error`
+  message, not raise a 500 — this includes unexpected DB errors on
+  insert (e.g. a constraint violation or locked database), which must be
+  caught and shown as a generic error rather than crashing
 - The insert must always use the logged-in user's `session["user_id"]` —
   never a value taken from the form
+- The category picker is a grid of colored pill buttons (radio + label),
+  a different interaction pattern from the plain submit-button pills used
+  by the profile page's date filter (`.filter-pill`). This divergence is
+  a known, accepted inconsistency for now — a future design-system pass
+  should reconcile the two "pill selector" idioms into one, but doing so
+  now would mean redesigning a working feature for a cosmetic concern
 
 ## Definition of done
 - [ ] Visiting `/expenses/add` while logged out redirects to `/login`

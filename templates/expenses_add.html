@@ -34,11 +34,11 @@
                     <label>Category</label>
                     <div class="category-picker">
                         {% for c in categories %}
-                        <input type="radio" name="category" id="cat-{{ c|lower }}"
+                        <input type="radio" name="category" id="cat-{{ c|lower|replace(' ', '-') }}"
                                value="{{ c }}" class="category-radio"
                                {{ 'checked' if c == form_values.category else '' }} required>
-                        <label for="cat-{{ c|lower }}"
-                               class="category-badge category-badge-{{ c|lower }} category-pill">{{ c }}</label>
+                        <label for="cat-{{ c|lower|replace(' ', '-') }}"
+                               class="category-badge category-badge-{{ c|lower|replace(' ', '-') }} category-pill">{{ c }}</label>
                         {% endfor %}
                     </div>
                 </div>

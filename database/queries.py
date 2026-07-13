@@ -56,7 +56,7 @@ def paginate(total_count, page_param, per_page):
     }
 
 
-def _parse_iso_date(value):
+def parse_iso_date(value):
     """Return a date object if value is a real 'YYYY-MM-DD' date, else None."""
     if not value or not isinstance(value, str):
         return None
@@ -93,8 +93,8 @@ def resolve_date_range(range_value, start_value=None, end_value=None, today=None
         first_day_prev_month = last_day_prev_month.replace(day=1)
         return first_day_prev_month.isoformat(), last_day_prev_month.isoformat()
 
-    start = _parse_iso_date(start_value)
-    end = _parse_iso_date(end_value)
+    start = parse_iso_date(start_value)
+    end = parse_iso_date(end_value)
     if start is None or end is None or start > end:
         return None, None
     return start.isoformat(), end.isoformat()
