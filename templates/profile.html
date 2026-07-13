@@ -13,6 +13,7 @@
             <p class="profile-email">{{ user.email }}</p>
             <p class="profile-meta">Member since {{ user.member_since }}</p>
         </div>
+        <a href="{{ url_for('add_expense') }}" class="btn-primary profile-header-action">Add expense</a>
     </section>
 
     <section class="profile-filter">
@@ -95,7 +96,7 @@
                         {% for tx in transactions %}
                         <tr>
                             <td>{{ tx.date }}</td>
-                            <td>{{ tx.description }}</td>
+                            <td>{{ tx.description or '' }}</td>
                             <td>
                                 <span class="category-badge category-badge-{{ tx.category|lower }}">{{ tx.category }}</span>
                             </td>
