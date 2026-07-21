@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from werkzeug.security import generate_password_hash
 
-DB_PATH = "expense_tracker.db"  # matches .gitignore entry
+DB_PATH = "spendly.db"  # matches .gitignore entry
 
 CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
 
