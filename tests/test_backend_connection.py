@@ -31,6 +31,7 @@ def _add_expense(user_id, amount, category, date, description="x"):
 
 # ---------- get_user_by_id ----------
 
+
 def test_get_user_by_id_valid(test_db_path):
     uid = _make_user("Jane Doe", "jane@example.com")
     result = get_user_by_id(uid)
@@ -44,6 +45,7 @@ def test_get_user_by_id_missing(test_db_path):
 
 
 # ---------- get_summary_stats ----------
+
 
 def test_get_summary_stats_with_expenses(test_db_path):
     uid = _make_user()
@@ -63,6 +65,7 @@ def test_get_summary_stats_no_expenses(test_db_path):
 
 # ---------- get_recent_transactions ----------
 
+
 def test_get_recent_transactions_ordering(test_db_path):
     uid = _make_user()
     _add_expense(uid, 5.00, "Food", "2026-07-01", "old")
@@ -70,7 +73,7 @@ def test_get_recent_transactions_ordering(test_db_path):
     _add_expense(uid, 7.00, "Food", "2026-07-02", "middle")
     txs = get_recent_transactions(uid)
     assert [t["description"] for t in txs] == ["newest", "middle", "old"]
-    assert set(txs[0].keys()) == {"date", "description", "category", "amount"}
+    assert set(txs[0].keys()) == {"id", "date", "description", "category", "amount"}
 
 
 def test_get_recent_transactions_empty(test_db_path):
@@ -79,6 +82,7 @@ def test_get_recent_transactions_empty(test_db_path):
 
 
 # ---------- get_category_breakdown ----------
+
 
 def test_get_category_breakdown_with_expenses(test_db_path):
     uid = _make_user()
@@ -97,6 +101,7 @@ def test_get_category_breakdown_empty(test_db_path):
 
 # ---------- route tests ----------
 
+
 def test_profile_redirects_when_unauthenticated(client):
     resp = client.get("/profile")
     assert resp.status_code == 302
@@ -106,7 +111,7 @@ def test_profile_redirects_when_unauthenticated(client):
 def test_profile_authenticated_seed_user(client):
     conn = get_db()
     row = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT id FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     expected_total_row = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS cnt FROM expenses WHERE user_id = ?",
@@ -121,8 +126,8 @@ def test_profile_authenticated_seed_user(client):
     body = resp.get_data(as_text=True)
 
     assert resp.status_code == 200
-    assert "Demo User" in body
-    assert "demo@spendly.com" in body
+    assert "Prateek" in body
+    assert "prateek@spendly.com" in body
     assert "₹" in body
     assert "$" not in body
     assert f"{expected_total_row['total']:.2f}" in body
@@ -141,7 +146,7 @@ def test_profile_shows_own_data_for_new_user(client):
 
     assert resp.status_code == 200
     assert "New Guy" in body
-    assert "Demo User" not in body
+    assert "Prateek" not in body
     assert "12.34" in body
 
 

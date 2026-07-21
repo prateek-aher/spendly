@@ -10,6 +10,7 @@ from database.db import CATEGORIES, get_db, init_db, seed_db
 from database.queries import (
     FILTER_PRESETS,
     get_category_breakdown,
+    get_expense_by_id,
     get_recent_transactions,
     get_summary_stats,
     get_user_by_id,
@@ -17,6 +18,7 @@ from database.queries import (
     paginate,
     parse_iso_date,
     resolve_date_range,
+    update_expense,
 )
 
 app = Flask(__name__)
@@ -32,6 +34,7 @@ with app.app_context():
 # ------------------------------------------------------------------ #
 # Routes                                                              #
 # ------------------------------------------------------------------ #
+
 
 @app.route("/")
 def landing():
@@ -59,16 +62,24 @@ def register():
             return render_template("register.html", error="All fields are required.")
 
         if "@" not in email:
-            return render_template("register.html", error="Please enter a valid email address.")
+            return render_template(
+                "register.html", error="Please enter a valid email address."
+            )
 
         if len(password) < 8:
-            return render_template("register.html", error="Password must be at least 8 characters.")
+            return render_template(
+                "register.html", error="Password must be at least 8 characters."
+            )
 
         conn = get_db()
-        existing_user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        existing_user = conn.execute(
+            "SELECT id FROM users WHERE email = ?", (email,)
+        ).fetchone()
         if existing_user:
             conn.close()
-            return render_template("register.html", error="An account with this email already exists.")
+            return render_template(
+                "register.html", error="An account with this email already exists."
+            )
 
         password_hash = generate_password_hash(password)
         cursor = conn.execute(
@@ -133,6 +144,70 @@ def require_active_user():
     return user_record
 
 
+def validate_expense_form(amount_raw, category, date_raw, description, today_date):
+    """Validate the shared amount/category/date/description expense fields.
+    Returns (amount, expense_date, error, error_field)."""
+    error = None
+    error_field = None
+    amount = None
+    try:
+        amount = round(float(amount_raw), 2)
+        if not math.isfinite(amount):
+            error = "Please enter a valid amount."
+            error_field = "amount"
+        elif amount <= 0:
+            error = "Amount must be greater than zero."
+            error_field = "amount"
+    except ValueError:
+        error = "Please enter a valid amount."
+        error_field = "amount"
+
+    if not error and category not in CATEGORIES:
+        error = "Please choose a valid category."
+        error_field = "category"
+
+    if not error and len(description) > 200:
+        error = "Description must be 200 characters or fewer."
+        error_field = "description"
+
+    expense_date = None
+    if not error:
+        expense_date = parse_iso_date(date_raw)
+        if expense_date is None:
+            error = "Please enter a valid date."
+            error_field = "date"
+        elif expense_date > today_date:
+            error = "Expense date cannot be in the future."
+            error_field = "date"
+
+    return amount, expense_date, error, error_field
+
+
+def describe_expense_changes(
+    old_expense, new_amount, new_category, new_date, new_description
+):
+    """Build a flash message summarising which fields changed between the
+    stored expense and the just-submitted values."""
+    old_description = old_expense["description"] or ""
+    new_description = new_description or ""
+
+    changes = []
+    if round(old_expense["amount"], 2) != new_amount:
+        changes.append(f"amount ₹{old_expense['amount']:.2f} → ₹{new_amount:.2f}")
+    if old_expense["category"] != new_category:
+        changes.append(f"category {old_expense['category']} → {new_category}")
+    if old_expense["date"] != new_date.isoformat():
+        changes.append(f"date {old_expense['date']} → {new_date.isoformat()}")
+    if old_description != new_description:
+        changes.append(
+            f'description "{old_description or "—"}" → "{new_description or "—"}"'
+        )
+
+    if not changes:
+        return "No changes made."
+    return "Updated expense: " + "; ".join(changes) + "."
+
+
 # ------------------------------------------------------------------ #
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
@@ -167,7 +242,9 @@ def profile():
         "top_category": stats["top_category"],
     }
 
-    pagination = paginate(stats["transaction_count"], request.args.get("page"), TRANSACTIONS_PER_PAGE)
+    pagination = paginate(
+        stats["transaction_count"], request.args.get("page"), TRANSACTIONS_PER_PAGE
+    )
 
     transactions = get_recent_transactions(
         user_id,
@@ -178,7 +255,9 @@ def profile():
     )
     categories = [
         {"name": cat["name"], "amount": cat["amount"], "percent": cat["pct"]}
-        for cat in get_category_breakdown(user_id, start_date=start_date, end_date=end_date)
+        for cat in get_category_breakdown(
+            user_id, start_date=start_date, end_date=end_date
+        )
     ]
 
     filter_state = {
@@ -238,41 +317,9 @@ def add_expense():
             "add_another": add_another,
         }
 
-        error = None
-        error_field = None
-        amount = None
-        # Amount/category/date/description validation below is specific to
-        # add_expense for now. edit_expense (Step 8) will need the same
-        # checks — extract a shared helper once that route exists.
-        try:
-            amount = round(float(amount_raw), 2)
-            if not math.isfinite(amount):
-                error = "Please enter a valid amount."
-                error_field = "amount"
-            elif amount <= 0:
-                error = "Amount must be greater than zero."
-                error_field = "amount"
-        except ValueError:
-            error = "Please enter a valid amount."
-            error_field = "amount"
-
-        if not error and category not in CATEGORIES:
-            error = "Please choose a valid category."
-            error_field = "category"
-
-        if not error and len(description) > 200:
-            error = "Description must be 200 characters or fewer."
-            error_field = "description"
-
-        expense_date = None
-        if not error:
-            expense_date = parse_iso_date(date_raw)
-            if expense_date is None:
-                error = "Please enter a valid date."
-                error_field = "date"
-            elif expense_date > today_date:
-                error = "Expense date cannot be in the future."
-                error_field = "date"
+        amount, expense_date, error, error_field = validate_expense_form(
+            amount_raw, category, date_raw, description, today_date
+        )
 
         if error:
             return render_template(
@@ -288,7 +335,13 @@ def add_expense():
             conn.execute(
                 "INSERT INTO expenses (user_id, amount, category, date, description) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (user_id, amount, category, expense_date.isoformat(), description or None),
+                (
+                    user_id,
+                    amount,
+                    category,
+                    expense_date.isoformat(),
+                    description or None,
+                ),
             )
             conn.commit()
         except sqlite3.Error:
@@ -324,9 +377,91 @@ def add_expense():
     )
 
 
-@app.route("/expenses/<int:id>/edit")
+@app.route("/expenses/<int:id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    user_record = require_active_user()
+    if user_record is None:
+        return redirect(url_for("login"))
+    user_id = user_record["id"]
+
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        flash("Expense not found.", "error")
+        return redirect(url_for("profile"))
+
+    today_date = date.today()
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount", "")
+        category = request.form.get("category", "")
+        date_raw = request.form.get("date", "")
+        description = request.form.get("description", "").strip()
+
+        form_values = {
+            "amount": amount_raw,
+            "category": category,
+            "date": date_raw or today_date.isoformat(),
+            "description": description,
+        }
+
+        amount, expense_date, error, error_field = validate_expense_form(
+            amount_raw, category, date_raw, description, today_date
+        )
+
+        if error:
+            return render_template(
+                "expenses_add.html",
+                categories=CATEGORIES,
+                error=error,
+                error_field=error_field,
+                form_values=form_values,
+                mode="edit",
+                expense_id=id,
+            )
+
+        try:
+            update_expense(
+                id,
+                user_id,
+                amount,
+                category,
+                expense_date.isoformat(),
+                description or None,
+            )
+        except sqlite3.Error:
+            app.logger.exception(
+                "Failed to update expense id=%s for user_id=%s", id, user_id
+            )
+            return render_template(
+                "expenses_add.html",
+                categories=CATEGORIES,
+                error="Something went wrong saving your expense. Please try again.",
+                error_field=None,
+                form_values=form_values,
+                mode="edit",
+                expense_id=id,
+            )
+
+        flash(
+            describe_expense_changes(
+                expense, amount, category, expense_date, description
+            ),
+            "success",
+        )
+        return redirect(url_for("profile"))
+
+    return render_template(
+        "expenses_add.html",
+        categories=CATEGORIES,
+        form_values={
+            "amount": expense["amount"],
+            "category": expense["category"],
+            "date": expense["date"],
+            "description": expense["description"] or "",
+        },
+        mode="edit",
+        expense_id=id,
+    )
 
 
 @app.route("/expenses/<int:id>/delete")
