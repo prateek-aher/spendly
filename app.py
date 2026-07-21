@@ -9,6 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from database.db import CATEGORIES, get_db, init_db, seed_db
 from database.queries import (
     FILTER_PRESETS,
+    delete_expense_by_id,
     get_category_breakdown,
     get_expense_by_id,
     get_recent_transactions,
@@ -475,9 +476,29 @@ def edit_expense(id):
     )
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route("/expenses/<int:id>/delete", methods=["POST"])
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    user_record = require_active_user()
+    if user_record is None:
+        return redirect(url_for("login"))
+    user_id = user_record["id"]
+
+    expense = get_expense_by_id(id, user_id)
+    if expense is None:
+        flash("Expense not found.", "error")
+        return redirect(url_for("profile"))
+
+    try:
+        delete_expense_by_id(id, user_id)
+    except sqlite3.Error:
+        app.logger.exception(
+            "Failed to delete expense id=%s for user_id=%s", id, user_id
+        )
+        flash("Something went wrong deleting your expense. Please try again.", "error")
+        return redirect(url_for("profile"))
+
+    flash(f"Deleted ₹{expense['amount']:.2f} from {expense['category']}.", "success")
+    return redirect(url_for("profile"))
 
 
 if __name__ == "__main__":

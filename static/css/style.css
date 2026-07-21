@@ -389,6 +389,19 @@ a { color: inherit; text-decoration: none; }
     color: var(--ink);
 }
 
+.btn-ghost.btn-danger {
+    color: var(--danger);
+    border-color: var(--danger);
+    font-family: var(--font-body);
+    cursor: pointer;
+}
+
+.btn-ghost.btn-danger:hover {
+    background: var(--danger-light);
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
 /* ------------------------------------------------------------------ */
 /* Features section                                                    */
 /* ------------------------------------------------------------------ */
@@ -1009,6 +1022,11 @@ a { color: inherit; text-decoration: none; }
 .profile-table td.actions-cell .btn-ghost {
     padding: 0.35rem 0.9rem;
     font-size: 0.8rem;
+}
+
+.profile-table td.actions-cell form {
+    display: inline-block;
+    margin-left: 0.5rem;
 }
 
 .profile-table-wrap { overflow-x: auto; }
