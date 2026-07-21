@@ -183,29 +183,64 @@ def validate_expense_form(amount_raw, category, date_raw, description, today_dat
     return amount, expense_date, error, error_field
 
 
-def describe_expense_changes(
+def diff_expense_fields(
     old_expense, new_amount, new_category, new_date, new_description
 ):
-    """Build a flash message summarising which fields changed between the
-    stored expense and the just-submitted values."""
+    """Compare the stored expense against just-submitted values. Returns a
+    list of (field_label, old_display, new_display) for fields that changed."""
     old_description = old_expense["description"] or ""
     new_description = new_description or ""
+    new_date_iso = new_date.isoformat()
 
-    changes = []
+    diffs = []
     if round(old_expense["amount"], 2) != new_amount:
-        changes.append(f"amount ₹{old_expense['amount']:.2f} → ₹{new_amount:.2f}")
+        diffs.append(("amount", f"₹{old_expense['amount']:.2f}", f"₹{new_amount:.2f}"))
     if old_expense["category"] != new_category:
-        changes.append(f"category {old_expense['category']} → {new_category}")
-    if old_expense["date"] != new_date.isoformat():
-        changes.append(f"date {old_expense['date']} → {new_date.isoformat()}")
+        diffs.append(("category", old_expense["category"], new_category))
+    if old_expense["date"] != new_date_iso:
+        diffs.append(("date", old_expense["date"], new_date_iso))
     if old_description != new_description:
-        changes.append(
-            f'description "{old_description or "—"}" → "{new_description or "—"}"'
+        diffs.append(
+            (
+                "description",
+                f'"{old_description or "—"}"',
+                f'"{new_description or "—"}"',
+            )
         )
+    return diffs
 
-    if not changes:
+
+def format_expense_change_flash(diffs):
+    """Turn a list of (field, old, new) diffs into a flash message."""
+    if not diffs:
         return "No changes made."
-    return "Updated expense: " + "; ".join(changes) + "."
+    parts = [f"{field} {old} → {new}" for field, old, new in diffs]
+    return "Updated expense: " + "; ".join(parts) + "."
+
+
+def read_expense_form():
+    """Read the shared amount/category/date/description fields from the
+    current request's form."""
+    return (
+        request.form.get("amount", ""),
+        request.form.get("category", ""),
+        request.form.get("date", ""),
+        request.form.get("description", "").strip(),
+    )
+
+
+def render_expense_form(
+    form_values, mode="add", expense_id=None, error=None, error_field=None
+):
+    return render_template(
+        "expenses_add.html",
+        categories=CATEGORIES,
+        error=error,
+        error_field=error_field,
+        form_values=form_values,
+        mode=mode,
+        expense_id=expense_id,
+    )
 
 
 # ------------------------------------------------------------------ #
@@ -303,10 +338,7 @@ def add_expense():
     today = today_date.isoformat()
 
     if request.method == "POST":
-        amount_raw = request.form.get("amount", "")
-        category = request.form.get("category", "")
-        date_raw = request.form.get("date", "")
-        description = request.form.get("description", "").strip()
+        amount_raw, category, date_raw, description = read_expense_form()
         add_another = bool(request.form.get("add_another"))
 
         form_values = {
@@ -322,12 +354,8 @@ def add_expense():
         )
 
         if error:
-            return render_template(
-                "expenses_add.html",
-                categories=CATEGORIES,
-                error=error,
-                error_field=error_field,
-                form_values=form_values,
+            return render_expense_form(
+                form_values, error=error, error_field=error_field
             )
 
         conn = get_db()
@@ -347,12 +375,9 @@ def add_expense():
         except sqlite3.Error:
             conn.close()
             app.logger.exception("Failed to insert expense for user_id=%s", user_id)
-            return render_template(
-                "expenses_add.html",
-                categories=CATEGORIES,
+            return render_expense_form(
+                form_values,
                 error="Something went wrong saving your expense. Please try again.",
-                error_field=None,
-                form_values=form_values,
             )
         conn.close()
 
@@ -364,16 +389,14 @@ def add_expense():
         return redirect(url_for("profile"))
 
     keep_add_another = session.pop("keep_add_another", False)
-    return render_template(
-        "expenses_add.html",
-        categories=CATEGORIES,
-        form_values={
+    return render_expense_form(
+        {
             "amount": "",
             "category": "",
             "date": today,
             "description": "",
             "add_another": keep_add_another,
-        },
+        }
     )
 
 
@@ -392,10 +415,7 @@ def edit_expense(id):
     today_date = date.today()
 
     if request.method == "POST":
-        amount_raw = request.form.get("amount", "")
-        category = request.form.get("category", "")
-        date_raw = request.form.get("date", "")
-        description = request.form.get("description", "").strip()
+        amount_raw, category, date_raw, description = read_expense_form()
 
         form_values = {
             "amount": amount_raw,
@@ -409,14 +429,12 @@ def edit_expense(id):
         )
 
         if error:
-            return render_template(
-                "expenses_add.html",
-                categories=CATEGORIES,
-                error=error,
-                error_field=error_field,
-                form_values=form_values,
+            return render_expense_form(
+                form_values,
                 mode="edit",
                 expense_id=id,
+                error=error,
+                error_field=error_field,
             )
 
         try:
@@ -432,28 +450,21 @@ def edit_expense(id):
             app.logger.exception(
                 "Failed to update expense id=%s for user_id=%s", id, user_id
             )
-            return render_template(
-                "expenses_add.html",
-                categories=CATEGORIES,
-                error="Something went wrong saving your expense. Please try again.",
-                error_field=None,
-                form_values=form_values,
+            return render_expense_form(
+                form_values,
                 mode="edit",
                 expense_id=id,
+                error="Something went wrong saving your expense. Please try again.",
             )
 
-        flash(
-            describe_expense_changes(
-                expense, amount, category, expense_date, description
-            ),
-            "success",
+        diffs = diff_expense_fields(
+            expense, amount, category, expense_date, description
         )
+        flash(format_expense_change_flash(diffs), "success")
         return redirect(url_for("profile"))
 
-    return render_template(
-        "expenses_add.html",
-        categories=CATEGORIES,
-        form_values={
+    return render_expense_form(
+        {
             "amount": expense["amount"],
             "category": expense["category"],
             "date": expense["date"],

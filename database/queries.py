@@ -1,4 +1,4 @@
-"""Pure DB query helpers for the profile page. No Flask imports."""
+"""Pure DB query helpers for the profile and expense-edit pages. No Flask imports."""
 
 from datetime import date, datetime, timedelta
 from math import ceil
@@ -197,7 +197,8 @@ def get_expense_by_id(expense_id, user_id):
     """Return the expense row if it exists and belongs to user_id, else None."""
     conn = get_db()
     row = conn.execute(
-        "SELECT id, amount, category, date, description FROM expenses WHERE id = ? AND user_id = ?",
+        "SELECT id, amount, category, date, description "
+        "FROM expenses WHERE id = ? AND user_id = ?",
         (expense_id, user_id),
     ).fetchone()
     conn.close()
@@ -205,6 +206,7 @@ def get_expense_by_id(expense_id, user_id):
 
 
 def update_expense(expense_id, user_id, amount, category, expense_date, description):
+    """Update expense_id's fields; no-op if it isn't owned by user_id."""
     conn = get_db()
     try:
         conn.execute(
