@@ -4,6 +4,12 @@ A personal expense tracker built with Flask — a step-by-step learning project 
 
 **Live demo:** [spendly-de9d.onrender.com](https://spendly-de9d.onrender.com)
 
+## Screenshots
+
+| Dashboard | Add expense | Login |
+| --- | --- | --- |
+| ![Dashboard showing spending overview, recent transactions, and category breakdown](docs/screenshots/dashboard.png) | ![Add expense form with amount, category, date, and description fields](docs/screenshots/add-expense.png) | ![Login page](docs/screenshots/login.png) |
+
 ## Tech stack
 
 - Flask (Python)
