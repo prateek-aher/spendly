@@ -5,7 +5,15 @@ from werkzeug.security import generate_password_hash
 
 DB_PATH = "spendly.db"  # matches .gitignore entry
 
-CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+CATEGORIES = [
+    "Food",
+    "Transport",
+    "Bills",
+    "Health",
+    "Entertainment",
+    "Shopping",
+    "Other",
+]
 
 
 def get_db():
@@ -59,11 +67,31 @@ def seed_db():
     today = datetime.now()
     sample_expenses = [
         (45.50, "Food", (today - timedelta(days=1)).strftime("%Y-%m-%d"), "Groceries"),
-        (12.00, "Transport", (today - timedelta(days=2)).strftime("%Y-%m-%d"), "Bus pass"),
-        (89.99, "Bills", (today - timedelta(days=3)).strftime("%Y-%m-%d"), "Electricity bill"),
+        (
+            12.00,
+            "Transport",
+            (today - timedelta(days=2)).strftime("%Y-%m-%d"),
+            "Bus pass",
+        ),
+        (
+            89.99,
+            "Bills",
+            (today - timedelta(days=3)).strftime("%Y-%m-%d"),
+            "Electricity bill",
+        ),
         (25.00, "Health", (today - timedelta(days=4)).strftime("%Y-%m-%d"), "Pharmacy"),
-        (15.00, "Entertainment", (today - timedelta(days=5)).strftime("%Y-%m-%d"), "Movie ticket"),
-        (60.00, "Shopping", (today - timedelta(days=6)).strftime("%Y-%m-%d"), "New shoes"),
+        (
+            15.00,
+            "Entertainment",
+            (today - timedelta(days=5)).strftime("%Y-%m-%d"),
+            "Movie ticket",
+        ),
+        (
+            60.00,
+            "Shopping",
+            (today - timedelta(days=6)).strftime("%Y-%m-%d"),
+            "New shoes",
+        ),
         (8.75, "Other", (today - timedelta(days=7)).strftime("%Y-%m-%d"), "Misc"),
         (30.00, "Food", (today - timedelta(days=8)).strftime("%Y-%m-%d"), "Restaurant"),
     ]
