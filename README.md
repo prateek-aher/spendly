@@ -2,7 +2,7 @@
 
 A personal expense tracker built with Flask — a step-by-step learning project covering database setup, auth, and expense CRUD.
 
-**Live demo:** _[add your Render URL here once deployed]_
+**Live demo:** [spendly-de9d.onrender.com](https://spendly-de9d.onrender.com)
 
 ## Tech stack
 
