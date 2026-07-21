@@ -27,6 +27,14 @@ function toLocalIsoDate(d) {
 document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".flash").forEach(scheduleFlashRemoval);
 
+    document.querySelectorAll("form[data-confirm]").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+            if (!window.confirm(form.dataset.confirm)) {
+                event.preventDefault();
+            }
+        });
+    });
+
     const expenseForm = document.getElementById("expense-form");
     if (!expenseForm) return;
 
