@@ -306,6 +306,12 @@ def test_post_valid_edit_change_reflected_in_profile_transactions(client):
 
     client.post(_edit_url(eid), data=_valid_form(description="Brand new unique text"))
 
+    # First request renders (and consumes) the one-time success flash, which
+    # intentionally shows the old value as part of its "old → new" summary.
+    client.get("/profile")
+
+    # Second request reflects only the persisted transaction list, with the
+    # flash already consumed.
     resp = client.get("/profile")
     body = resp.get_data(as_text=True)
     assert resp.status_code == 200
