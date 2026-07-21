@@ -81,10 +81,10 @@ def test_post_register_sets_session(client):
 # ---------- POST /register — duplicate email ----------
 
 def test_post_register_duplicate_email_shows_error(client):
-    # The demo user (demo@spendly.com) is created by seed_db().
+    # The demo user (prateek@spendly.com) is created by seed_db().
     resp = client.post(
         "/register",
-        data={"name": "Someone", "email": "demo@spendly.com", "password": "password123"},
+        data={"name": "Someone", "email": "prateek@spendly.com", "password": "password123"},
     )
     body = resp.get_data(as_text=True)
     assert resp.status_code == 200
@@ -94,9 +94,9 @@ def test_post_register_duplicate_email_shows_error(client):
 def test_post_register_duplicate_email_no_duplicate_row(client):
     client.post(
         "/register",
-        data={"name": "Someone", "email": "demo@spendly.com", "password": "password123"},
+        data={"name": "Someone", "email": "prateek@spendly.com", "password": "password123"},
     )
-    assert _count_users_with_email("demo@spendly.com") == 1
+    assert _count_users_with_email("prateek@spendly.com") == 1
 
 
 # ---------- POST /register — validation failures ----------

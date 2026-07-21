@@ -138,12 +138,12 @@ def test_seed_db_creates_exactly_one_demo_user(test_db_path):
 
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT * FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchall()
     conn.close()
 
     assert len(rows) == 1
-    assert rows[0]["name"] == "Demo User"
+    assert rows[0]["name"] == "Prateek"
 
 
 def test_seed_db_demo_password_is_hashed_not_plaintext(test_db_path):
@@ -151,12 +151,12 @@ def test_seed_db_demo_password_is_hashed_not_plaintext(test_db_path):
 
     conn = get_db()
     row = conn.execute(
-        "SELECT * FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT * FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     conn.close()
 
-    assert row["password_hash"] != "demo123"
-    assert check_password_hash(row["password_hash"], "demo123")
+    assert row["password_hash"] != "prateek123"
+    assert check_password_hash(row["password_hash"], "prateek123")
 
 
 def test_seed_db_creates_eight_sample_expenses(test_db_path):
@@ -164,7 +164,7 @@ def test_seed_db_creates_eight_sample_expenses(test_db_path):
 
     conn = get_db()
     demo_user = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT id FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     expenses = conn.execute(
         "SELECT * FROM expenses WHERE user_id = ?", (demo_user["id"],)
@@ -179,7 +179,7 @@ def test_seed_db_expenses_all_linked_to_demo_user(test_db_path):
 
     conn = get_db()
     demo_user = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT id FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     total_expenses = conn.execute("SELECT COUNT(*) AS c FROM expenses").fetchone()["c"]
     linked_expenses = conn.execute(
@@ -196,7 +196,7 @@ def test_seed_db_covers_at_least_one_expense_per_category(test_db_path):
 
     conn = get_db()
     demo_user = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT id FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     categories_used = {
         r["category"]
@@ -232,7 +232,7 @@ def test_seed_db_does_not_duplicate_on_repeated_calls(test_db_path):
 
     conn = get_db()
     user_count = conn.execute(
-        "SELECT COUNT(*) AS c FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT COUNT(*) AS c FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()["c"]
     expense_count = conn.execute("SELECT COUNT(*) AS c FROM expenses").fetchone()["c"]
     conn.close()
@@ -255,7 +255,7 @@ def test_seed_db_returns_early_if_users_table_already_has_data(test_db_path):
 
     conn = get_db()
     demo_user = conn.execute(
-        "SELECT * FROM users WHERE email = ?", ("demo@spendly.com",)
+        "SELECT * FROM users WHERE email = ?", ("prateek@spendly.com",)
     ).fetchone()
     total_users = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
     conn.close()

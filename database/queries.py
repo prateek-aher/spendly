@@ -157,14 +157,16 @@ def get_summary_stats(user_id, start_date=None, end_date=None):
     }
 
 
-def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, offset=0):
+def get_recent_transactions(
+    user_id, limit=10, start_date=None, end_date=None, offset=0
+):
     conn = get_db()
     where_clause, params = _user_date_filter(user_id, start_date, end_date)
     params += [limit, offset]
 
     rows = conn.execute(
         f"""
-        SELECT date, description, category, amount
+        SELECT id, date, description, category, amount
         FROM expenses
         {where_clause}
         ORDER BY date DESC, id DESC
@@ -176,9 +178,12 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, o
 
     transactions = []
     for row in rows:
-        formatted_date = datetime.strptime(row["date"], "%Y-%m-%d").strftime("%b %d, %Y")
+        formatted_date = datetime.strptime(row["date"], "%Y-%m-%d").strftime(
+            "%b %d, %Y"
+        )
         transactions.append(
             {
+                "id": row["id"],
                 "date": formatted_date,
                 "description": row["description"],
                 "category": row["category"],
@@ -186,6 +191,30 @@ def get_recent_transactions(user_id, limit=10, start_date=None, end_date=None, o
             }
         )
     return transactions
+
+
+def get_expense_by_id(expense_id, user_id):
+    """Return the expense row if it exists and belongs to user_id, else None."""
+    conn = get_db()
+    row = conn.execute(
+        "SELECT id, amount, category, date, description FROM expenses WHERE id = ? AND user_id = ?",
+        (expense_id, user_id),
+    ).fetchone()
+    conn.close()
+    return row
+
+
+def update_expense(expense_id, user_id, amount, category, expense_date, description):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, category, expense_date, description, expense_id, user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_category_breakdown(user_id, start_date=None, end_date=None):
@@ -213,11 +242,13 @@ def get_category_breakdown(user_id, start_date=None, end_date=None):
     for row in rows:
         category_total = row["total"]
         pct = round(category_total / grand_total * 100) if grand_total else 0
-        breakdown.append({
-            "name": row["category"],
-            "amount": round(category_total, 2),
-            "pct": pct,
-        })
+        breakdown.append(
+            {
+                "name": row["category"],
+                "amount": round(category_total, 2),
+                "pct": pct,
+            }
+        )
 
     remainder = 100 - sum(item["pct"] for item in breakdown)
     breakdown[0]["pct"] += remainder
