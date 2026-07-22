@@ -96,13 +96,13 @@
                     <tbody>
                         {% for tx in transactions %}
                         <tr>
-                            <td>{{ tx.date }}</td>
-                            <td>{{ tx.description or '' }}</td>
-                            <td>
+                            <td data-label="Date">{{ tx.date }}</td>
+                            <td data-label="Description">{{ tx.description or '' }}</td>
+                            <td data-label="Category">
                                 <span class="category-badge category-badge-{{ tx.category|lower }}">{{ tx.category }}</span>
                             </td>
-                            <td class="amount-cell">₹{{ "%.2f"|format(tx.amount) }}</td>
-                            <td class="actions-cell">
+                            <td class="amount-cell" data-label="Amount">₹{{ "%.2f"|format(tx.amount) }}</td>
+                            <td class="actions-cell" data-label="Actions">
                                 <a href="{{ url_for('edit_expense', id=tx.id) }}" class="btn-ghost">Edit</a>
                                 <form
                                     method="POST"
