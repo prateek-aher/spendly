@@ -125,6 +125,33 @@ a { color: inherit; text-decoration: none; }
 
 .nav-cta:hover { background: var(--accent) !important; }
 
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.nav-toggle-bar {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--ink);
+    border-radius: 2px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle.is-open .nav-toggle-bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle.is-open .nav-toggle-bar:nth-child(2) { opacity: 0; }
+.nav-toggle.is-open .nav-toggle-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
 /* ------------------------------------------------------------------ */
 /* Flash messages                                                      */
 /* ------------------------------------------------------------------ */
@@ -609,6 +636,7 @@ a { color: inherit; text-decoration: none; }
     display: flex;
     gap: 0.5rem;
     margin-bottom: 0.6rem;
+    flex-wrap: wrap;
 }
 
 .date-quick-pick {
@@ -838,8 +866,43 @@ a { color: inherit; text-decoration: none; }
 }
 
 @media (max-width: 600px) {
-    .nav-links a:not(.nav-cta) { display: none; }
+    .nav-toggle { display: flex; }
+
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 0.5rem 1.5rem 1rem;
+        background: var(--paper);
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .nav-links.is-open { display: flex; }
+
+    .nav-links > * {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 44px;
+        padding: 0.6rem 0;
+    }
+
+    .nav-links > *:not(.nav-cta) { border-bottom: 1px solid var(--border-soft); }
+    .nav-links > *:last-child { border-bottom: none; }
+
+    .nav-links .nav-cta { justify-content: center; margin-top: 0.5rem; }
+
     .hero { padding: 3rem 1rem 2rem; }
+
+    .hero-actions { flex-direction: column; align-items: stretch; width: 100%; }
+    .hero-actions .btn-primary { width: 100%; text-align: center; }
+    .cta-section .btn-primary { display: block; width: 100%; text-align: center; }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1223,4 +1286,65 @@ a { color: inherit; text-decoration: none; }
     .filter-custom-range { flex-direction: column; align-items: stretch; }
     .filter-date-group { min-width: 0; }
     .coming-soon-card { padding: 2.5rem 1.75rem; }
+
+    /* Transaction table: card-ify via data-label */
+    .profile-table thead { display: none; }
+
+    .profile-table,
+    .profile-table tbody,
+    .profile-table tr {
+        display: block;
+        width: 100%;
+    }
+
+    .profile-table tr {
+        padding: 0.5rem 0 0.75rem;
+        border-bottom: 1px solid var(--border-soft);
+    }
+
+    .profile-table tbody tr:last-child { border-bottom: none; }
+
+    .profile-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.4rem 0;
+        border-bottom: none;
+    }
+
+    .profile-table td::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+    }
+
+    .profile-table td.amount-cell { white-space: normal; }
+
+    .profile-table td.actions-cell {
+        display: block;
+        text-align: left;
+        white-space: normal;
+    }
+
+    .profile-table td.actions-cell::before {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Touch targets (~44px) */
+    .filter-pill,
+    .category-pill,
+    .date-quick-pick,
+    .btn-ghost,
+    .pagination-btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
 }
